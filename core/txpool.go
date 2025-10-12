@@ -3,24 +3,28 @@
 package core
 
 import (
-	"blockEmulator/utils"
+	// "blockEmulator/utils"
+	"container/heap"
 	"sync"
 	"time"
-	"unsafe"
+	// "unsafe"
 )
 
 type TxPool struct {
-	TxQueue   []*Transaction            // transaction Queue
-	RelayPool map[uint64][]*Transaction //designed for sharded blockchain, from Monoxide
+	TxQueue   txPriorityQueue           // Transaction Priority Queue
+	RelayPool map[uint64][]*Transaction // Designed for sharded blockchain, from Monoxide
 	lock      sync.Mutex
 	// The pending list is ignored
 }
 
 func NewTxPool() *TxPool {
-	return &TxPool{
-		TxQueue:   make([]*Transaction, 0),
+	p := &TxPool{
+		// TxQueue:   make([]*Transaction, 0),
+		TxQueue:   make(txPriorityQueue, 0),
 		RelayPool: make(map[uint64][]*Transaction),
 	}
+	heap.Init(&p.TxQueue)
+	return p
 }
 
 // Add a transaction to the pool (consider the queue only)
@@ -30,7 +34,7 @@ func (txpool *TxPool) AddTx2Pool(tx *Transaction) {
 	if tx.Time.IsZero() {
 		tx.Time = time.Now()
 	}
-	txpool.TxQueue = append(txpool.TxQueue, tx)
+	txpool.TxQueue.PushTx(tx)
 }
 
 // Add a list of transactions to the pool
@@ -41,49 +45,59 @@ func (txpool *TxPool) AddTxs2Pool(txs []*Transaction) {
 		if tx.Time.IsZero() {
 			tx.Time = time.Now()
 		}
-		txpool.TxQueue = append(txpool.TxQueue, tx)
+		txpool.TxQueue.PushTx(tx)
 	}
 }
 
 // add transactions into the pool head
-func (txpool *TxPool) AddTxs2Pool_Head(tx []*Transaction) {
-	txpool.lock.Lock()
-	defer txpool.lock.Unlock()
-	txpool.TxQueue = append(tx, txpool.TxQueue...)
-}
+// func (txpool *TxPool) AddTxs2Pool_Head(tx []*Transaction) {
+// 	txpool.lock.Lock()
+// 	defer txpool.lock.Unlock()
+// 	txpool.TxQueue = append(tx, txpool.TxQueue...)
+// }
 
 // Pack transactions for a proposal
 func (txpool *TxPool) PackTxs(max_txs uint64) []*Transaction {
 	txpool.lock.Lock()
 	defer txpool.lock.Unlock()
 	txNum := max_txs
-	if uint64(len(txpool.TxQueue)) < txNum {
-		txNum = uint64(len(txpool.TxQueue))
+	if uint64(txpool.TxQueue.Len()) < txNum {
+		txNum = uint64(txpool.TxQueue.Len())
 	}
-	txs_Packed := txpool.TxQueue[:txNum]
-	txpool.TxQueue = txpool.TxQueue[txNum:]
-	return txs_Packed
+
+	out := make([]*Transaction, 0, txNum)
+	for i := 0; i < int(txNum); i++ {
+		tx := txpool.TxQueue.PopTx()
+		if tx == nil {
+			break
+		}
+		out = append(out, tx)
+	}
+	return out
+	// txs_Packed := txpool.TxQueue[:txNum]
+	// txpool.TxQueue = txpool.TxQueue[txNum:]
+	// return txs_Packed
 }
 
 // Pack transaction for a proposal (use 'BlocksizeInBytes' to control)
-func (txpool *TxPool) PackTxsWithBytes(max_bytes int) []*Transaction {
-	txpool.lock.Lock()
-	defer txpool.lock.Unlock()
+// func (txpool *TxPool) PackTxsWithBytes(max_bytes int) []*Transaction {
+// 	txpool.lock.Lock()
+// 	defer txpool.lock.Unlock()
 
-	txNum := len(txpool.TxQueue)
-	currentSize := 0
-	for tx_idx, tx := range txpool.TxQueue {
-		currentSize += int(unsafe.Sizeof(*tx))
-		if currentSize > max_bytes {
-			txNum = tx_idx
-			break
-		}
-	}
+// 	txNum := len(txpool.TxQueue)
+// 	currentSize := 0
+// 	for tx_idx, tx := range txpool.TxQueue {
+// 		currentSize += int(unsafe.Sizeof(*tx))
+// 		if currentSize > max_bytes {
+// 			txNum = tx_idx
+// 			break
+// 		}
+// 	}
 
-	txs_Packed := txpool.TxQueue[:txNum]
-	txpool.TxQueue = txpool.TxQueue[txNum:]
-	return txs_Packed
-}
+// 	txs_Packed := txpool.TxQueue[:txNum]
+// 	txpool.TxQueue = txpool.TxQueue[txNum:]
+// 	return txs_Packed
+// }
 
 // Relay transactions
 func (txpool *TxPool) AddRelayTx(tx *Transaction, shardID uint64) {
@@ -110,7 +124,7 @@ func (txpool *TxPool) GetUnlocked() {
 func (txpool *TxPool) GetTxQueueLen() int {
 	txpool.lock.Lock()
 	defer txpool.lock.Unlock()
-	return len(txpool.TxQueue)
+	return txpool.TxQueue.Len()
 }
 
 // get the length of ClearRelayPool
@@ -140,6 +154,7 @@ func (txpool *TxPool) PackRelayTxs(shardID, minRelaySize, maxRelaySize uint64) (
 }
 
 // abort ! Transfer transactions when re-sharding
+/*
 func (txpool *TxPool) TransferTxs(addr utils.Address) []*Transaction {
 	txpool.lock.Lock()
 	defer txpool.lock.Unlock()
@@ -169,3 +184,4 @@ func (txpool *TxPool) TransferTxs(addr utils.Address) []*Transaction {
 	txpool.RelayPool = newRelayPool
 	return txTransfered
 }
+*/

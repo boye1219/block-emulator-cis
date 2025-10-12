@@ -67,7 +67,7 @@ func (cphm *CLPAPbftInsideExtraHandleMod) sendAccounts_and_Txs() {
 	asFetched := cphm.pbftNode.CurChain.FetchAccounts(accountToFetch)
 	// send the accounts to other shards
 	cphm.pbftNode.CurChain.Txpool.GetLocked()
-	cphm.pbftNode.pl.Plog.Println("The size of tx pool is: ", len(cphm.pbftNode.CurChain.Txpool.TxQueue))
+	cphm.pbftNode.pl.Plog.Println("The size of tx pool is: ", cphm.pbftNode.CurChain.Txpool.GetTxQueueLen())
 	for i := uint64(0); i < cphm.pbftNode.pbftChainConfig.ShardNums; i++ {
 		if i == cphm.pbftNode.ShardID {
 			continue
@@ -84,23 +84,32 @@ func (cphm *CLPAPbftInsideExtraHandleMod) sendAccounts_and_Txs() {
 		}
 		// fetch transactions to it, after the transactions is fetched, delete it in the pool
 		txSend := make([]*core.Transaction, 0)
-		firstPtr := 0
-		for secondPtr := 0; secondPtr < len(cphm.pbftNode.CurChain.Txpool.TxQueue); secondPtr++ {
-			ptx := cphm.pbftNode.CurChain.Txpool.TxQueue[secondPtr]
-			// if this is a normal transaction or ctx1 before re-sharding && the addr is correspond
-			_, ok1 := addrSet[ptx.Sender]
-			condition1 := ok1 && !ptx.Relayed
-			// if this tx is ctx2
-			_, ok2 := addrSet[ptx.Recipient]
-			condition2 := ok2 && ptx.Relayed
-			if condition1 || condition2 {
-				txSend = append(txSend, ptx)
-			} else {
-				cphm.pbftNode.CurChain.Txpool.TxQueue[firstPtr] = ptx
-				firstPtr++
+		tmp := make([]*core.Transaction, 0)
+
+	    pq := cphm.pbftNode.CurChain.Txpool.TxQueue
+
+		for pq.Len() > 0 {
+			tx := pq.PopTx()
+			if tx == nil {
+				break
 			}
-		}
-		cphm.pbftNode.CurChain.Txpool.TxQueue = cphm.pbftNode.CurChain.Txpool.TxQueue[:firstPtr]
+            // Normal transaction or relay transaction of ctx1 before re-sharding && the addr is correspond
+            _, ok1 := addrSet[tx.Sender]
+            condition1 := ok1 && !tx.Relayed
+            // ctx2
+            _, ok2 := addrSet[tx.Recipient]
+            condition2 := ok2 && tx.Relayed
+
+            if condition1 || condition2 {
+                txSend = append(txSend, tx)
+            } else {
+                tmp = append(tmp, tx)
+            }
+        }
+
+        for _, tx := range tmp {
+            pq.PushTx(tx)
+        }
 
 		cphm.pbftNode.pl.Plog.Printf("The txSend to shard %d is generated \n", i)
 		ast := message.AccountStateAndTx{

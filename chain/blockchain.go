@@ -167,7 +167,8 @@ func (bc *BlockChain) GenerateBlock(miner int32) *core.Block {
 	var txs []*core.Transaction
 	// pack the transactions from the txpool
 	if params.UseBlocksizeInBytes == 1 {
-		txs = bc.Txpool.PackTxsWithBytes(params.BlocksizeInBytes)
+		println("[ERROR] Currently Not Support Pack Txs With Bytes!")
+		// txs = bc.Txpool.PackTxsWithBytes(params.BlocksizeInBytes)
 	} else {
 		txs = bc.Txpool.PackTxs(bc.ChainConfig.BlockSize)
 	}

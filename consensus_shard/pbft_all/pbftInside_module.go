@@ -98,12 +98,15 @@ func (rphm *RawRelayPbftExtraHandleMod) HandleinCommit(cmsg *message.Commit) boo
 			rphm.pbftNode.RelayMsgSend()
 		}
 
+		blockPerEpoch := 8
+		epoch := int(rphm.pbftNode.NodeID) / blockPerEpoch
+
 		// send txs excuted in this block to the listener
 		// add more message to measure more metrics
 		bim := message.BlockInfoMsg{
 			BlockBodyLength: len(block.Body),
 			InnerShardTxs:   interShardTxs,
-			Epoch:           0,
+			Epoch:           epoch,
 
 			Relay1Txs: relay1Txs,
 			Relay2Txs: relay2Txs,
@@ -137,7 +140,7 @@ func (rphm *RawRelayPbftExtraHandleMod) HandleinCommit(cmsg *message.Commit) boo
 		metricVal := []string{
 			strconv.Itoa(int(block.Header.Number)),
 			strconv.Itoa(bim.Epoch),
-			strconv.Itoa(len(rphm.pbftNode.CurChain.Txpool.TxQueue)),
+			strconv.Itoa(rphm.pbftNode.CurChain.Txpool.GetTxQueueLen()),
 			strconv.Itoa(len(block.Body)),
 			strconv.Itoa(len(relay1Txs)),
 			strconv.Itoa(len(relay2Txs)),

@@ -19,6 +19,9 @@ type Transaction struct {
 	Nonce     uint64
 	Signature []byte // not implemented now.
 	Value     *big.Int
+	GasPrice  uint64
+	GasUsed	  uint64
+	GasFee    uint64
 	TxHash    []byte
 
 	Time time.Time // TimeStamp the tx proposed.
@@ -82,6 +85,7 @@ func NewTransaction(sender, recipient string, value *big.Int, nonce uint64, prop
 
 	hash := sha256.Sum256(tx.Encode())
 	tx.TxHash = hash[:]
+	tx.GasFee = tx.GasPrice * tx.GasUsed
 	tx.Relayed = false
 	tx.FinalRecipient = ""
 	tx.OriginalSender = ""

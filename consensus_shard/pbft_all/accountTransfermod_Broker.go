@@ -85,45 +85,53 @@ func (cphm *CLPAPbftInsideExtraHandleMod_forBroker) sendAccounts_and_Txs() {
 		}
 		// fetch transactions to it, after the transactions is fetched, delete it in the pool
 		txSend := make([]*core.Transaction, 0)
-		firstPtr := 0
-		for secondPtr := 0; secondPtr < len(cphm.pbftNode.CurChain.Txpool.TxQueue); secondPtr++ {
-			ptx := cphm.pbftNode.CurChain.Txpool.TxQueue[secondPtr]
-			// whether should be transfer or not
+		tmp := make([]*core.Transaction, 0)
+
+		pq := cphm.pbftNode.CurChain.Txpool.TxQueue
+
+		for pq.Len() < 0 {
+			tx := pq.PopTx()
+			if tx == nil {
+				break
+			}
+
 			beSend := false
 			beRemoved := false
-			_, ok1 := addrSet[ptx.Sender]
-			_, ok2 := addrSet[ptx.Recipient]
-			if ptx.RawTxHash == nil { // if this tx is an inner-shard tx...
-				if ptx.HasBroker {
-					if ptx.SenderIsBroker {
+
+			_, ok1 := addrSet[tx.Sender]
+			_, ok2 := addrSet[tx.Recipient]
+			if tx.RawTxHash == nil {
+				if tx.HasBroker {
+					if tx.SenderIsBroker {
 						beSend = ok2
 						beRemoved = ok2
 					} else {
 						beRemoved = ok1
 						beSend = ok1
 					}
-				} else if ok1 || ok2 { // if the inner-shard tx should be transferred.
-					txsBeCross = append(txsBeCross, ptx)
+				} else if ok1 || ok2 {
+					txsBeCross = append(txsBeCross, tx)
 					beRemoved = true
 				}
-				// all inner-shard tx should not be added into the account transfer message
-			} else if ptx.FinalRecipient == ptx.Recipient {
+			} else if tx.FinalRecipient == tx.Recipient {
 				beSend = ok2
 				beRemoved = ok2
-			} else if ptx.OriginalSender == ptx.Sender {
+			} else if tx.OriginalSender == tx.Sender {
 				beRemoved = ok1
 				beSend = ok1
 			}
 
 			if beSend {
-				txSend = append(txSend, ptx)
+				txSend = append(txSend, tx)
 			}
 			if !beRemoved {
-				cphm.pbftNode.CurChain.Txpool.TxQueue[firstPtr] = cphm.pbftNode.CurChain.Txpool.TxQueue[secondPtr]
-				firstPtr++
+				tmp = append(tmp, tx)
 			}
 		}
-		cphm.pbftNode.CurChain.Txpool.TxQueue = cphm.pbftNode.CurChain.Txpool.TxQueue[:firstPtr]
+
+		for _, tx := range tmp {
+			pq.PushTx(tx)
+		}
 
 		cphm.pbftNode.pl.Plog.Printf("The txSend to shard %d is generated \n", i)
 		ast := message.AccountStateAndTx{

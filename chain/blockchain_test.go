@@ -13,7 +13,7 @@ import (
 )
 
 func TestBlockChain(t *testing.T) {
-	accounts := []string{"000000000001", "00000000002", "00000000003", "00000000004", "00000000005", "00000000006"}
+	accounts := []string{"00000000001", "00000000002", "00000000003", "00000000004", "00000000005", "00000000006"}
 	as := make([]*core.AccountState, 0)
 	for idx := range accounts {
 		as = append(as, &core.AccountState{
