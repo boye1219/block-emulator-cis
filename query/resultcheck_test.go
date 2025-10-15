@@ -56,7 +56,7 @@ func data2tx(data []string, nonce uint64) (*core.Transaction, bool) {
 		if !ok {
 			log.Panic("new int failed\n")
 		}
-		tx := core.NewTransaction(data[3][2:], data[4][2:], val, nonce, time.Now())
+		tx := core.NewTransaction(data[3][2:], data[4][2:], val, big.NewInt(100), uint64(100), nonce, time.Now())
 		return tx, true
 	}
 	return &core.Transaction{}, false

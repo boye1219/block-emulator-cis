@@ -70,7 +70,7 @@ func buildBlockChain() {
 	CurChain, _ := chain.NewBlockChain(pcc, db)
 	CurChain.PrintBlockChain()
 	CurChain.AddAccounts(accounts, as, 0)
-	CurChain.Txpool.AddTx2Pool(core.NewTransaction("00000000001", "00000000002", big.NewInt(100000), 1, time.Now()))
+	CurChain.Txpool.AddTx2Pool(core.NewTransaction("00000000001", "00000000002", big.NewInt(100000), big.NewInt(100), uint64(100), 1, time.Now()))
 
 	for i := 0; i < 4; i++ {
 		b := CurChain.GenerateBlock(int32(i))

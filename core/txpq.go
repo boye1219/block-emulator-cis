@@ -1,8 +1,8 @@
+// txpq.go
 package core
 
 import (
 	"container/heap"
-	"time"
 )
 
 type txItem struct {
@@ -16,18 +16,16 @@ func (pq txPriorityQueue) Len() int { return len(pq) }
 
 func (pq txPriorityQueue) Less(i, j int) bool {
 	ti, tj := pq[i].tx, pq[j].tx
-	if ti.GasFee != tj.GasFee {
-		return ti.GasFee > tj.GasFee
+
+	cmp := ti.GasFee.Cmp(tj.GasFee)
+	if cmp != 0 {
+		return cmp > 0
 	}
-	var tiT, tjT time.Time = ti.Time, tj.Time
-	if tiT.IsZero() && !tjT.IsZero() {
-		return false
-	}
-	if !tiT.IsZero() && tjT.IsZero() {
-		return true
-	}
+
+	tiT, tjT := ti.Time, tj.Time
 	return tiT.Before(tjT)
 }
+
 
 func (pq txPriorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]

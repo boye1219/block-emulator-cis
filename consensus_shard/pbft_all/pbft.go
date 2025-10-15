@@ -63,7 +63,7 @@ type PbftConsensusNode struct {
 
 	// locks about pbft
 	sequenceLock sync.Mutex // the lock of sequence
-	lock         sync.Mutex // lock the stage
+	lock         sync.Mutex // lock the stagel
 	askForLock   sync.Mutex // lock for asking for a serise of requests
 
 	// seqID of other Shards, to synchronize
@@ -261,4 +261,8 @@ func (p *PbftConsensusNode) WaitToStop() {
 // close the pbft
 func (p *PbftConsensusNode) closePbft() {
 	p.CurChain.CloseBlockChain()
+}
+
+func (p *PbftConsensusNode) IsPrimary() bool {
+    return p.NodeID == uint64(p.view.Load())
 }

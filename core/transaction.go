@@ -1,3 +1,4 @@
+// transaction.go
 // Definition of transaction
 
 package core
@@ -19,9 +20,9 @@ type Transaction struct {
 	Nonce     uint64
 	Signature []byte // not implemented now.
 	Value     *big.Int
-	GasPrice  uint64
+	GasPrice  *big.Int
 	GasUsed	  uint64
-	GasFee    uint64
+	GasFee    *big.Int
 	TxHash    []byte
 
 	Time time.Time // TimeStamp the tx proposed.
@@ -74,18 +75,21 @@ func DecodeTx(to_decode []byte) *Transaction {
 }
 
 // new a transaction
-func NewTransaction(sender, recipient string, value *big.Int, nonce uint64, proposeTime time.Time) *Transaction {
+func NewTransaction(proposeTime time.Time, sender, recipient string, value *big.Int, gasprice *big.Int, gasused uint64, nonce uint64) *Transaction {
 	tx := &Transaction{
 		Sender:    sender,
 		Recipient: recipient,
 		Value:     value,
+		GasPrice:  gasprice,
+		GasUsed:   gasused,
 		Nonce:     nonce,
 		Time:      proposeTime,
 	}
 
 	hash := sha256.Sum256(tx.Encode())
+	bigGasUsed := new(big.Int).SetUint64(gasused)
 	tx.TxHash = hash[:]
-	tx.GasFee = tx.GasPrice * tx.GasUsed
+	tx.GasFee = new(big.Int).Mul(gasprice, bigGasUsed)
 	tx.Relayed = false
 	tx.FinalRecipient = ""
 	tx.OriginalSender = ""

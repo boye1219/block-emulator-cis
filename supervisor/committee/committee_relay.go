@@ -14,6 +14,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -43,11 +44,28 @@ func NewRelayCommitteeModule(Ip_nodeTable map[uint64]map[uint64]string, Ss *sign
 // check whether it is a legal txs meesage. if so, read txs and put it into the txlist
 func data2tx(data []string, nonce uint64) (*core.Transaction, bool) {
 	if data[6] == "0" && data[7] == "0" && len(data[3]) > 16 && len(data[4]) > 16 && data[3] != data[4] {
+		gasused, err := strconv.ParseUint(data[11], 10, 64)
+		if err != nil {
+			log.Panic("parse gasUsed to uint64 failed\n")
+		}
+		
+		gasprice, ok := new(big.Int).SetString(data[10], 10)
+		if !ok {
+			log.Panic("parse gasPrice to uint64 failed\n")
+		}
+
 		val, ok := new(big.Int).SetString(data[8], 10)
 		if !ok {
 			log.Panic("new int failed\n")
 		}
-		tx := core.NewTransaction(data[3][2:], data[4][2:], val, nonce, time.Now())
+
+		tInt, err := strconv.ParseInt(data[1], 10, 64)
+		if err != nil {
+			log.Panic("parse tInt to uint64 failed\n")
+		}
+		tTime := time.Unix(tInt, 0)
+
+		tx := core.NewTransaction(tTime, data[3][2:], data[4][2:], val, gasprice, gasused, nonce)
 		return tx, true
 	}
 	return &core.Transaction{}, false

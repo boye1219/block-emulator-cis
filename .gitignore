@@ -1,6 +1,10 @@
 # 不要上传实验结果！
 # Do not upload your experimental results!
 expTest
+exp.log
+blockEmulator_linux_Precompile
+linux_exe_run_IpAddr=127_0_0_1.sh
+output.csv
 
 # 不要上传可执行文件！
 # Do not upload your executable files!

@@ -1,12 +1,13 @@
+// txpool.go
 // the define and some operation of txpool
-
 package core
 
 import (
 	// "blockEmulator/utils"
 	"container/heap"
 	"sync"
-	"time"
+	"math/big"
+	"log"
 	// "unsafe"
 )
 
@@ -28,26 +29,36 @@ func NewTxPool() *TxPool {
 }
 
 // Add a transaction to the pool (consider the queue only)
+// core/txpool.go
 func (txpool *TxPool) AddTx2Pool(tx *Transaction) {
-	txpool.lock.Lock()
-	defer txpool.lock.Unlock()
-	if tx.Time.IsZero() {
-		tx.Time = time.Now()
-	}
-	txpool.TxQueue.PushTx(tx)
+    txpool.lock.Lock()
+    defer txpool.lock.Unlock()
+    if tx.GasFee == nil {
+        if tx.GasPrice != nil {
+            tx.GasFee = new(big.Int).Mul(tx.GasPrice, new(big.Int).SetUint64(tx.GasUsed))
+        } else {
+            tx.GasFee = new(big.Int) // 視為 0
+        }
+    }
+    txpool.TxQueue.PushTx(tx)
 }
 
 // Add a list of transactions to the pool
 func (txpool *TxPool) AddTxs2Pool(txs []*Transaction) {
-	txpool.lock.Lock()
-	defer txpool.lock.Unlock()
-	for _, tx := range txs {
-		if tx.Time.IsZero() {
-			tx.Time = time.Now()
-		}
-		txpool.TxQueue.PushTx(tx)
-	}
+    txpool.lock.Lock()
+    defer txpool.lock.Unlock()
+    for _, tx := range txs {
+        if tx.GasFee == nil {
+            if tx.GasPrice != nil {
+                tx.GasFee = new(big.Int).Mul(tx.GasPrice, new(big.Int).SetUint64(tx.GasUsed))
+            } else {
+                tx.GasFee = new(big.Int)
+            }
+        }
+        txpool.TxQueue.PushTx(tx)
+    }
 }
+
 
 // add transactions into the pool head
 // func (txpool *TxPool) AddTxs2Pool_Head(tx []*Transaction) {
@@ -58,6 +69,11 @@ func (txpool *TxPool) AddTxs2Pool(txs []*Transaction) {
 
 // Pack transactions for a proposal
 func (txpool *TxPool) PackTxs(max_txs uint64) []*Transaction {
+	top := txpool.TxQueue.PeekTx()
+	if top != nil { 
+		log.Printf("Top GasFee=%s GasPrice=%s GasUsed=%d", top.GasFee, top.GasPrice, top.GasUsed) 
+	}
+
 	txpool.lock.Lock()
 	defer txpool.lock.Unlock()
 	txNum := max_txs
@@ -74,9 +90,7 @@ func (txpool *TxPool) PackTxs(max_txs uint64) []*Transaction {
 		out = append(out, tx)
 	}
 	return out
-	// txs_Packed := txpool.TxQueue[:txNum]
-	// txpool.TxQueue = txpool.TxQueue[txNum:]
-	// return txs_Packed
+
 }
 
 // Pack transaction for a proposal (use 'BlocksizeInBytes' to control)
